@@ -43,12 +43,30 @@ class Piece:
         self.has_moved = False
         
     def get_possible_moves(self, board):
-        """駒の可能な動きを取得（現在は全方向移動可能）"""
+        """駒の可能な動きを取得"""
         moves = []
-        for row in range(8):
-            for col in range(8):
-                if board.is_valid_move(self.row, self.col, row, col):
-                    moves.append((row, col))
+        if self.type == PieceType.BISHOP:
+            # 斜め4方向をチェック（左上, 右上, 左下, 右下）
+            directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
+            for dr, dc in directions:
+                r, c = self.row + dr, self.col + dc
+                while 0 <= r < 8 and 0 <= c < 8:
+                    target = board.get_piece(r, c)
+                    if target is None:
+                        moves.append((r, c))  # 空きマス
+                    elif target.color != self.color:
+                        moves.append((r, c))  # 敵の駒を取る
+                        break  # 敵の駒の先には進めない
+                    else:
+                        break  # 味方の駒で止まる
+                    r += dr
+                    c += dc
+        else:
+        # 一時的に他の駒は全マスに移動できるようにする（今のまま）
+            for row in range(8):
+                for col in range(8):
+                    if board.is_valid_move(self.row, self.col, row, col):
+                        moves.append((row, col))
         return moves
     
     def move(self, new_row, new_col):
@@ -235,7 +253,7 @@ class ChessGame:
         info_y = BOARD_SIZE * SQUARE_SIZE + 10
         
         # 現在のターン（英語で表示）
-        turn_text = f"Current Turn: {'White' if self.board.current_turn == PieceColor.WHITE else 'Black'}"
+        turn_text = f"Current Turn: {'Black' if self.board.current_turn == PieceColor.WHITE else 'White'}"
         text = self.font.render(turn_text, True, BLACK)
         self.screen.blit(text, (10, info_y))
         
