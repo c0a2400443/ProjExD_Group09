@@ -45,10 +45,20 @@ class Piece:
     def get_possible_moves(self, board):
         """駒の可能な動きを取得（現在は全方向移動可能）"""
         moves = []
-        for row in range(8):
-            for col in range(8):
-                if board.is_valid_move(self.row, self.col, row, col):
-                    moves.append((row, col))
+        if self.type == PieceType.KING:
+            directions = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0),  (1, 1)]
+            for dr, dc in directions:
+                new_row = self.row + dr
+                new_col = self.col + dc
+                if 0 <= new_row < 8 and 0 <= new_col < 8:
+                    target_piece = board.get_piece(new_row, new_col)
+                    if not target_piece or target_piece.color != self.color:
+                        moves.append((new_row, new_col))
+        else:
+            for row in range(8):
+                for col in range(8):
+                    if board.is_valid_move(self.row, self.col, row, col):
+                        moves.append((row, col))
         return moves
     
     def move(self, new_row, new_col):
