@@ -88,6 +88,7 @@ class ChessBoard:
         self.current_turn = PieceColor.WHITE
         self.selected_piece = None
         self.selected_pos = None
+        self.winner = None
         self.possible_moves = []
         self.setup_initial_position()
     
@@ -147,6 +148,18 @@ class ChessBoard:
         # 移動先が有効かチェック
         if not self.is_valid_move(from_row, from_col, to_row, to_col):
             return False
+
+        #target_pieceを定義
+        target_piece = self.get_piece(to_row, to_col)
+        
+        # キングが取られたら勝敗を設定
+        if target_piece and target_piece.type == PieceType.KING:
+            self.set_piece(to_row, to_col, piece)
+            self.set_piece(from_row, from_col, None)
+            piece.move(to_row, to_col)
+            self.winner = piece.color  # 勝った側の色
+            return True
+        
         
         # 移動実行
         self.set_piece(to_row, to_col, piece)
@@ -243,6 +256,13 @@ class ChessGame:
     def draw_info(self):
         """ゲーム情報を描画"""
         info_y = BOARD_SIZE * SQUARE_SIZE + 10
+
+        if self.board.winner != None:
+            winner_color = "White" if self.board.winner == PieceColor.WHITE else "Black"
+            result_text = f"{winner_color} wins!"
+            text = self.font.render(result_text, True, RED)
+            self.screen.blit(text, (10, info_y))
+            return  # 勝敗が決まったら他の表示は不要
         
         # 現在のターン（英語で表示）
         turn_text = f"Current Turn: {'White' if self.board.current_turn == PieceColor.WHITE else 'Black'}"
@@ -259,6 +279,9 @@ class ChessGame:
     
     def handle_click(self, mouse_pos):
         """マウスクリックを処理"""
+        if self.board.winner:
+            return # 勝敗が決まったらクリック操作無効
+        
         row, col = self.get_board_pos(mouse_pos)
         if row is not None and col is not None:
             if self.board.selected_piece:
