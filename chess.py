@@ -43,13 +43,29 @@ class Piece:
         self.has_moved = False
         
     def get_possible_moves(self, board):
-        """駒の可能な動きを取得（現在は全方向移動可能）"""
+        """駒の可能な動きを取得"""
         moves = []
-        for row in range(8):
-            for col in range(8):
-                if board.is_valid_move(self.row, self.col, row, col):
-                    moves.append((row, col))
+        if self.type == PieceType.KNIGHT:
+            # ナイトの動き：8方向へのL字移動
+            knight_moves = [
+                (-2, -1), (-2, +1),
+                (-1, -2), (-1, +2),
+                (+1, -2), (+1, +2),
+                (+2, -1), (+2, +1)
+            ]
+            for dr, dc in knight_moves:
+                new_row = self.row + dr
+                new_col = self.col + dc
+                if board.is_valid_move(self.row, self.col, new_row, new_col):
+                    moves.append((new_row, new_col))
+        else:
+            # デフォルトの全マス探索（将来の他の駒用）
+            for row in range(8):
+                for col in range(8):
+                    if board.is_valid_move(self.row, self.col, row, col):
+                        moves.append((row, col))
         return moves
+
     
     def move(self, new_row, new_col):
         """駒を移動"""
