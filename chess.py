@@ -84,12 +84,27 @@ class Piece:
                 if abs(target_col - self.col) == 1 and target_row == self.row + direction:
                     moves.append((target_row, target_col))
 
+        elif self.type == PieceType.KNIGHT:
+            # ナイトの動き：8方向へのL字移動
+            knight_moves = [
+                (-2, -1), (-2, +1),
+                (-1, -2), (-1, +2),
+                (+1, -2), (+1, +2),
+                (+2, -1), (+2, +1)
+            ]
+            for dr, dc in knight_moves:
+                new_row = self.row + dr
+                new_col = self.col + dc
+                if board.is_valid_move(self.row, self.col, new_row, new_col):
+                    moves.append((new_row, new_col))
+
         else:
             for row in range(8):
                 for col in range(8):
                     if board.is_valid_move(self.row, self.col, row, col):
                         moves.append((row, col))
         return moves
+
     
     def move(self, new_row, new_col):
         """駒を移動"""
