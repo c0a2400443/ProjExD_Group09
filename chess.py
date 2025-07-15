@@ -98,11 +98,59 @@ class Piece:
                 if board.is_valid_move(self.row, self.col, new_row, new_col):
                     moves.append((new_row, new_col))
 
-        else:
-            for row in range(8):
-                for col in range(8):
-                    if board.is_valid_move(self.row, self.col, row, col):
-                        moves.append((row, col))
+        elif self.type == PieceType.ROOK:
+            directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+            for dr, dc in directions:
+                r, c = self.row + dr, self.col + dc
+                while 0 <= r < 8 and 0 <= c < 8:
+                    target_piece = board.get_piece(r, c)
+                    if target_piece is None:
+                        moves.append((r, c))
+                    elif target_piece.color != self.color:
+                        moves.append((r, c))
+                        break
+                    else:
+                        break
+                    r += dr
+                    c += dc
+        elif self.type == PieceType.QUEEN:
+            directions = [(-1, 0), (1, 0), (0, -1), (0, 1),
+                        (-1, -1), (-1, 1), (1, -1), (1, 1)]
+            for dr, dc in directions:
+                r, c = self.row + dr, self.col + dc
+                while 0 <= r < 8 and 0 <= c < 8:
+                    target_piece = board.get_piece(r, c)
+                    if target_piece is None:
+                        moves.append((r, c))
+                    elif target_piece.color != self.color:
+                        moves.append((r, c))
+                        break
+                    else:
+                        break
+                    r += dr
+                    c += dc
+        # else:
+        #     # 暫定的に全マス移動可能（is_valid_moveで敵味方チェックあり）
+        #     for row in range(8):
+        #         for col in range(8):
+        #             if board.is_valid_move(self.row, self.col, row, col):
+        #                 moves.append((row, col))
+        #     return moves
+
+        # for dr, dc in directions:
+        #     r, c = self.row + dr, self.col + dc
+        #     while 0 <= r < 8 and 0 <= c < 8:
+        #         target_piece = board.get_piece(r, c)
+        #         if target_piece is None:
+        #             moves.append((r, c))
+        #         elif target_piece.color != self.color:
+        #             moves.append((r, c))
+        #             break
+        #         else:
+        #             break
+        #         r += dr
+        #         c += dc
+
         return moves
 
     
