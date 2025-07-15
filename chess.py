@@ -84,6 +84,33 @@ class Piece:
                 if abs(target_col - self.col) == 1 and target_row == self.row + direction:
                     moves.append((target_row, target_col))
 
+        elif self.type == PieceType.KING:
+            directions_k = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0),  (1, 1)]
+            for dr, dc in directions_k:
+                new_row = self.row + dr
+                new_col = self.col + dc
+                if 0 <= new_row < 8 and 0 <= new_col < 8:
+                    target_piece = board.get_piece(new_row, new_col)
+                    if not target_piece or target_piece.color != self.color:
+                        moves.append((new_row, new_col))
+            if not self.has_moved:
+                row = self.row
+                # キングサイド（右）
+                rook = board.get_piece(row, 7)
+                if rook and rook.type == PieceType.ROOK and not rook.has_moved:
+                    if board.get_piece(row, 5) is None and board.get_piece(row, 6) is None:
+                        moves.append((row, 6))  # キャスリング先（キング）
+
+                # クイーンサイド（左）
+                rook = board.get_piece(row, 0)
+                if rook and rook.type == PieceType.ROOK and not rook.has_moved:
+                    if (board.get_piece(row, 1) is None and
+                        board.get_piece(row, 2) is None and
+                        board.get_piece(row, 3) is None):
+                        moves.append((row, 2))  # キャスリング先（キング）
+
+
+
         elif self.type == PieceType.KNIGHT:
             # ナイトの動き：8方向へのL字移動
             knight_moves = [
@@ -267,6 +294,22 @@ class ChessBoard:
             self.en_passant_target = (intermediate_row, from_col)
         else:
             self.en_passant_target = None
+        
+        # キャスリング時のルーク移動
+        if piece.type == PieceType.KING and abs(to_col - from_col) == 2:
+            row = from_row
+            if to_col == 6:
+                # キングサイド
+                rook = self.get_piece(row, 7)
+                self.set_piece(row, 5, rook)
+                self.set_piece(row, 7, None)
+                rook.move(row, 5)
+            elif to_col == 2:
+                # クイーンサイド
+                rook = self.get_piece(row, 0)
+                self.set_piece(row, 3, rook)
+                self.set_piece(row, 0, None)
+                rook.move(row, 3)
 
         # 昇格判定 → 昇格待ちにしてターンは切り替えない
         if piece.type == PieceType.PAWN and ((piece.color == PieceColor.WHITE and to_row == 0) or (piece.color == PieceColor.BLACK and to_row == 7)):
@@ -372,7 +415,7 @@ class ChessGame:
         info_y = BOARD_SIZE * SQUARE_SIZE + 10
 
         if self.board.winner != None:
-            winner_color = "White" if self.board.winner == PieceColor.WHITE else "Black"
+            winner_color = "Black" if self.board.winner == PieceColor.WHITE else "White"
             result_text = f"{winner_color} wins!"
             text = self.font.render(result_text, True, RED)
             self.screen.blit(text, (10, info_y))
@@ -405,7 +448,7 @@ class ChessGame:
             return  # 昇格中は他の情報は描画しない
 
         # 通常のターン情報表示は元のコードのまま
-        turn_text = f"Current Turn: {'Black' if self.board.current_turn == PieceColor.WHITE else 'Black'}"
+        turn_text = f"Current Turn: {'Black' if self.board.current_turn == PieceColor.WHITE else 'White'}"
         text = self.font.render(turn_text, True, BLACK)
         self.screen.blit(text, (10, info_y))
         
