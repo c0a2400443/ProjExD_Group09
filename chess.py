@@ -317,14 +317,25 @@ class ChessGame:
                 if event.type == pygame.QUIT:
                     running = False
                 elif event.type == pygame.MOUSEBUTTONDOWN:
-                    if event.button == 1:  # 左クリック
+                # 勝敗が決まっていなければクリック処理する
+                    if event.button == 1 and not self.board.winner:
                         self.handle_click(event.pos)
+                elif event.type == pygame.KEYDOWN:
+                    # ゲーム終了時にRキーでリセット
+                    if self.board.winner and event.key == pygame.K_r:
+                        self.board = ChessBoard()  # 新しいボードに入れ替え（リセット）
+                        print("Game restarted")
             
             # 描画
             self.screen.fill(WHITE)
             self.draw_board()
             self.draw_pieces()
             self.draw_info()
+
+            # 勝敗決定後にリスタートの案内表示
+            if self.board.winner:
+                restart_text = self.font.render("Press R to restart", True, BLUE)
+                self.screen.blit(restart_text, (10, WINDOW_HEIGHT - 40))
             
             pygame.display.flip()
             self.clock.tick(FPS)
@@ -336,3 +347,5 @@ class ChessGame:
 if __name__ == "__main__":
     game = ChessGame()
     game.run()
+
+
