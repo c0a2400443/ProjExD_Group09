@@ -43,23 +43,116 @@ class Piece:
         self.has_moved = False
         
     def get_possible_moves(self, board):
-        """駒の可能な動きを取得（現在は全方向移動可能）"""
+        """駒の可能な動きを取得"""
         moves = []
-        if self.type == PieceType.KING:
-            directions_k = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0),  (1, 1)]
-            for dr, dc in directions_k:
+        if self.type == PieceType.BISHOP:
+            # 斜め4方向をチェック（左上, 右上, 左下, 右下）
+            directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
+            for dr, dc in directions:
+                r, c = self.row + dr, self.col + dc
+                while 0 <= r < 8 and 0 <= c < 8:
+                    target = board.get_piece(r, c)
+                    if target is None:
+                        moves.append((r, c))  # 空きマス
+                    elif target.color != self.color:
+                        moves.append((r, c))  # 敵の駒を取る
+                        break  # 敵の駒の先には進めない
+                    else:
+                        break  # 味方の駒で止まる
+                    r += dr
+                    c += dc
+        elif self.type == PieceType.PAWN:
+            direction = -1 if self.color == PieceColor.WHITE else 1
+            start_row = 6 if self.color == PieceColor.WHITE else 1
+
+            if board.get_piece(self.row + direction, self.col) is None:
+                moves.append((self.row + direction, self.col))
+
+                if self.row == start_row and board.get_piece(self.row + 2 * direction, self.col) is None:
+                    moves.append((self.row + 2 * direction, self.col))
+
+            for dx in [-1, 1]:
+                new_row = self.row + direction
+                new_col = self.col + dx
+                if 0 <= new_col < 8 and 0 <= new_row < 8:
+                    target = board.get_piece(new_row, new_col)
+                    if target and target.color != self.color:
+                        moves.append((new_row, new_col))
+
+            if board.en_passant_target:
+                target_row, target_col = board.en_passant_target
+                if abs(target_col - self.col) == 1 and target_row == self.row + direction:
+                    moves.append((target_row, target_col))
+
+        elif self.type == PieceType.KNIGHT:
+            # ナイトの動き：8方向へのL字移動
+            knight_moves = [
+                (-2, -1), (-2, +1),
+                (-1, -2), (-1, +2),
+                (+1, -2), (+1, +2),
+                (+2, -1), (+2, +1)
+            ]
+            for dr, dc in knight_moves:
                 new_row = self.row + dr
                 new_col = self.col + dc
-                if 0 <= new_row < 8 and 0 <= new_col < 8:
-                    target_piece = board.get_piece(new_row, new_col)
-                    if not target_piece or target_piece.color != self.color:
-                        moves.append((new_row, new_col))
-        else:
-            for row in range(8):
-                for col in range(8):
-                    if board.is_valid_move(self.row, self.col, row, col):
-                        moves.append((row, col))
+                if board.is_valid_move(self.row, self.col, new_row, new_col):
+                    moves.append((new_row, new_col))
+
+        elif self.type == PieceType.ROOK:
+            directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+            for dr, dc in directions:
+                r, c = self.row + dr, self.col + dc
+                while 0 <= r < 8 and 0 <= c < 8:
+                    target_piece = board.get_piece(r, c)
+                    if target_piece is None:
+                        moves.append((r, c))
+                    elif target_piece.color != self.color:
+                        moves.append((r, c))
+                        break
+                    else:
+                        break
+                    r += dr
+                    c += dc
+        elif self.type == PieceType.QUEEN:
+            directions = [(-1, 0), (1, 0), (0, -1), (0, 1),
+                        (-1, -1), (-1, 1), (1, -1), (1, 1)]
+            for dr, dc in directions:
+                r, c = self.row + dr, self.col + dc
+                while 0 <= r < 8 and 0 <= c < 8:
+                    target_piece = board.get_piece(r, c)
+                    if target_piece is None:
+                        moves.append((r, c))
+                    elif target_piece.color != self.color:
+                        moves.append((r, c))
+                        break
+                    else:
+                        break
+                    r += dr
+                    c += dc
+        # else:
+        #     # 暫定的に全マス移動可能（is_valid_moveで敵味方チェックあり）
+        #     for row in range(8):
+        #         for col in range(8):
+        #             if board.is_valid_move(self.row, self.col, row, col):
+        #                 moves.append((row, col))
+        #     return moves
+
+        # for dr, dc in directions:
+        #     r, c = self.row + dr, self.col + dc
+        #     while 0 <= r < 8 and 0 <= c < 8:
+        #         target_piece = board.get_piece(r, c)
+        #         if target_piece is None:
+        #             moves.append((r, c))
+        #         elif target_piece.color != self.color:
+        #             moves.append((r, c))
+        #             break
+        #         else:
+        #             break
+        #         r += dr
+        #         c += dc
+
         return moves
+
     
     def move(self, new_row, new_col):
         """駒を移動"""
@@ -90,6 +183,11 @@ class ChessBoard:
         self.selected_pos = None
         self.winner = None
         self.possible_moves = []
+        
+        self.en_passant_target = None
+        self.promotion_pending = False
+        self.promotion_piece = None
+
         self.setup_initial_position()
     
     def setup_initial_position(self):
@@ -134,18 +232,14 @@ class ChessBoard:
         return True
     
     def make_move(self, from_row, from_col, to_row, to_col):
-        """駒を移動"""
         piece = self.get_piece(from_row, from_col)
-        
-        # 基本的な移動可能性チェック
-        if not piece:
+        if not piece or piece.color != self.current_turn:
             return False
-        
-        # 現在のターンの駒かチェック
-        if piece.color != self.current_turn:
-            return False
-        
-        # 移動先が有効かチェック
+
+        is_en_passant = False
+        if piece.type == PieceType.PAWN and self.en_passant_target == (to_row, to_col):
+            is_en_passant = True
+
         if not self.is_valid_move(from_row, from_col, to_row, to_col):
             return False
 
@@ -160,13 +254,28 @@ class ChessBoard:
             self.winner = piece.color  # 勝った側の色
             return True
         
-        
-        # 移動実行
+
+        if is_en_passant:
+            self.set_piece(from_row, to_col, None)
+
         self.set_piece(to_row, to_col, piece)
         self.set_piece(from_row, from_col, None)
         piece.move(to_row, to_col)
-        
-        # ターン切り替え
+
+        if piece.type == PieceType.PAWN and abs(to_row - from_row) == 2:
+            intermediate_row = (from_row + to_row) // 2
+            self.en_passant_target = (intermediate_row, from_col)
+        else:
+            self.en_passant_target = None
+
+        # 昇格判定 → 昇格待ちにしてターンは切り替えない
+        if piece.type == PieceType.PAWN and ((piece.color == PieceColor.WHITE and to_row == 0) or (piece.color == PieceColor.BLACK and to_row == 7)):
+            self.promotion_pending = True
+            self.promotion_piece = piece
+            # ターン切り替えは昇格完了後に行うため保留
+            return True
+
+        # 通常のターン切り替え
         self.current_turn = PieceColor.BLACK if self.current_turn == PieceColor.WHITE else PieceColor.WHITE
         return True
     
@@ -202,6 +311,12 @@ class ChessGame:
                 self.font = pygame.font.Font(None, 24)  # フォールバック
         
         self.piece_font = pygame.font.Font(None, 60)
+        self.promotion_choices = [
+            PieceType.QUEEN,
+            PieceType.ROOK,
+            PieceType.BISHOP,
+            PieceType.KNIGHT
+        ]
         
     def get_board_pos(self, mouse_pos):
         """マウス位置をボード座標に変換"""
@@ -254,7 +369,6 @@ class ChessGame:
                     self.screen.blit(text, text_rect)
     
     def draw_info(self):
-        """ゲーム情報を描画"""
         info_y = BOARD_SIZE * SQUARE_SIZE + 10
 
         if self.board.winner != None:
@@ -263,31 +377,73 @@ class ChessGame:
             text = self.font.render(result_text, True, RED)
             self.screen.blit(text, (10, info_y))
             return  # 勝敗が決まったら他の表示は不要
-        
-        # 現在のターン（英語で表示）
-        turn_text = f"Current Turn: {'White' if self.board.current_turn == PieceColor.WHITE else 'Black'}"
+        if self.board.promotion_pending:
+            # 昇格UI描画
+            text = self.font.render("Promotion: Select a piece", True, BLACK)
+            self.screen.blit(text, (10, info_y))
+
+            # 駒候補を横に並べて表示
+            for i, p_type in enumerate(self.promotion_choices):
+                symbol = {
+                    PieceType.QUEEN: "Q",
+                    PieceType.ROOK: "R",
+                    PieceType.BISHOP: "B",
+                    PieceType.KNIGHT: "N"
+                }[p_type]
+
+                x = 10 + i * 60
+                y = info_y + 30
+
+                rect = pygame.Rect(x, y, 50, 50)
+                pygame.draw.rect(self.screen, LIGHT_BROWN, rect)
+                pygame.draw.rect(self.screen, BLACK, rect, 2)
+
+                text = self.piece_font.render(symbol, True, BLACK)
+                text_rect = text.get_rect(center=rect.center)
+                self.screen.blit(text, text_rect)
+
+            return  # 昇格中は他の情報は描画しない
+
+        # 通常のターン情報表示は元のコードのまま
+        turn_text = f"Current Turn: {'Black' if self.board.current_turn == PieceColor.WHITE else 'Black'}"
         text = self.font.render(turn_text, True, BLACK)
         self.screen.blit(text, (10, info_y))
         
-        # 選択中の駒（英語で表示）
         if self.board.selected_piece:
             piece = self.board.selected_piece
             color_name = "White" if piece.color == PieceColor.WHITE else "Black"
             selected_text = f"Selected: {color_name} {str(piece)} at ({piece.row}, {piece.col})"
             text = self.font.render(selected_text, True, BLACK)
             self.screen.blit(text, (10, info_y + 30))
-    
+        
     def handle_click(self, mouse_pos):
         """マウスクリックを処理"""
+        if self.board.promotion_pending:
+            info_y = BOARD_SIZE * SQUARE_SIZE + 40
+            x_start = 10
+            box_size = 50
+            for i, p_type in enumerate(self.promotion_choices):
+                rect = pygame.Rect(x_start + i * 60, info_y, box_size, box_size)
+                if rect.collidepoint(mouse_pos):
+                    # ユーザーが選択した駒に昇格
+                    self.board.promotion_piece.type = p_type
+                    self.board.promotion_pending = False
+                    self.board.promotion_piece = None
+                    # 昇格が終わったのでターン切り替え
+                    self.board.current_turn = PieceColor.BLACK if self.board.current_turn == PieceColor.WHITE else PieceColor.WHITE
+                    self.board.deselect_piece()
+                    print(f"Promotion selected: {p_type}")
+                    return
+            return  # 昇格中はそれ以外のクリックは無視
+
+        # 以下、既存の選択処理
         if self.board.winner:
             return # 勝敗が決まったらクリック操作無効
         
         row, col = self.get_board_pos(mouse_pos)
         if row is not None and col is not None:
             if self.board.selected_piece:
-                # 駒が選択されている場合
                 if (row, col) in self.board.possible_moves:
-                    # 有効な移動先がクリックされた場合
                     from_row, from_col = self.board.selected_pos
                     if self.board.make_move(from_row, from_col, row, col):
                         print(f"Move made: {from_row},{from_col} -> {row},{col}")
@@ -296,14 +452,11 @@ class ChessGame:
                     else:
                         print("Move failed")
                 elif self.board.select_piece(row, col):
-                    # 別の駒を選択（現在のターンの駒のみ）
                     print(f"Selected piece: {self.board.selected_piece} at ({row}, {col})")
                 else:
-                    # 無効な場所がクリックされた場合、選択解除
                     self.board.deselect_piece()
                     print("Deselected piece")
             else:
-                # 駒が選択されていない場合
                 if self.board.select_piece(row, col):
                     print(f"Selected piece: {self.board.selected_piece} at ({row}, {col})")
                 else:
