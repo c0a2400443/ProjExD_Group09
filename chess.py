@@ -46,8 +46,8 @@ class Piece:
         """駒の可能な動きを取得（現在は全方向移動可能）"""
         moves = []
         if self.type == PieceType.KING:
-            directions = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0),  (1, 1)]
-            for dr, dc in directions:
+            directions_k = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0),  (1, 1)]
+            for dr, dc in directions_k:
                 new_row = self.row + dr
                 new_col = self.col + dc
                 if 0 <= new_row < 8 and 0 <= new_col < 8:
